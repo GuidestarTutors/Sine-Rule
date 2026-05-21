@@ -447,17 +447,17 @@ footer.site .arch-foot { color: var(--line-deco); }
 
         <div class="step" data-step="2" tabindex="0" role="button" aria-label="Step 2: Construction">
           <div class="st-head"><span class="roman">ii</span><span class="kicker">Construction</span></div>
-          <div class="title">Drop a perpendicular from C to side AB.</div>
-          <div class="body">Call its length $h$. This one line splits the triangle into two right-angled triangles — and that's the whole trick.</div>
+          <div class="title">Drop a perpendicular onto the longest side.</div>
+          <div class="body">From the opposite vertex, drop a perpendicular of height $h$. (Choosing the longest side keeps the foot <em>inside</em> the edge for every triangle.) This one line splits it into two right-angled triangles — and that's the whole trick.</div>
         </div>
 
         <div class="step" data-step="3" tabindex="0" role="button" aria-label="Step 3: Two views of h">
           <div class="st-head"><span class="roman">iii</span><span class="kicker">Two views of h</span></div>
           <div class="title">Measure the same height two ways.</div>
           <div class="body">
-            In the left right-triangle (shaded blue), $\sin A = h/b$, so:
+            Each half is right-angled, so $h$ equals a side times the sine of the base angle it sits against. Reading the left half:
             <div class="math">$$h = b\,\sin A$$</div>
-            In the right one (shaded green), $\sin B = h/a$, so:
+            and the right half gives the same height a second way:
             <div class="math">$$h = a\,\sin B$$</div>
           </div>
         </div>
@@ -574,21 +574,32 @@ function render(){
   placeLabel('lblSideB',midpoint(A,C),centroid,18);
   placeLabel('lblSideC',midpoint(A,B),centroid,18);
 
-  // perpendicular from C to AB
-  const F=footPerp(C,A,B);
-  setLine('hLine',C,F);
-  // right-angle square: base direction tracks whichever end of AB the foot is nearer,
-  // so the marker always sits correctly against the base.
-  const baseTarget = (dist(F,A) >= dist(F,B)) ? A : B;
-  document.getElementById('hSquare').setAttribute('d', rightAngleSquare(F, baseTarget, C, 12));
-  const hMid=midpoint(C,F);
-  const perpDir={x:-(F.y-C.y),y:(F.x-C.x)}, pm=Math.hypot(perpDir.x,perpDir.y)||1;
-  document.getElementById('hLabel').setAttribute('x',hMid.x+(perpDir.x/pm)*12);
-  document.getElementById('hLabel').setAttribute('y',hMid.y+(perpDir.y/pm)*12+5);
+  // Perpendicular construction.
+  // Drop the altitude from the vertex OPPOSITE the longest side onto that side.
+  // The foot of the altitude to the longest side is always interior to it, so the
+  // perpendicular never lands outside the triangle (fixes the obtuse-angle case).
+  const sides = [
+    { len:a, apex:A, base1:B, base2:C },  // side a (BC) is opposite A
+    { len:b, apex:B, base1:A, base2:C },  // side b (AC) is opposite B
+    { len:c, apex:C, base1:A, base2:B },  // side c (AB) is opposite C
+  ];
+  const longest = sides.reduce((m,s)=> s.len>m.len ? s : m, sides[0]);
+  const { apex:P, base1:L, base2:Rt } = longest;   // P = apex we drop from; L,Rt = base endpoints
+  const F = footPerp(P, L, Rt);
 
-  // two right-triangle halves: A-F-C and B-F-C
-  document.getElementById('halfL').setAttribute('points',`${A.x},${A.y} ${F.x},${F.y} ${C.x},${C.y}`);
-  document.getElementById('halfR').setAttribute('points',`${B.x},${B.y} ${F.x},${F.y} ${C.x},${C.y}`);
+  setLine('hLine', P, F);
+  // right-angle marker: one edge along the base (toward the nearer endpoint),
+  // the other up the altitude toward the apex.
+  const baseTarget = (dist(F,L) >= dist(F,Rt)) ? L : Rt;
+  document.getElementById('hSquare').setAttribute('d', rightAngleSquare(F, baseTarget, P, 12));
+  const hMid=midpoint(P,F);
+  const perpDir={x:-(F.y-P.y),y:(F.x-P.x)}, pm=Math.hypot(perpDir.x,perpDir.y)||1;
+  document.getElementById('hLabel').setAttribute('x',hMid.x+(perpDir.x/pm)*13);
+  document.getElementById('hLabel').setAttribute('y',hMid.y+(perpDir.y/pm)*13+5);
+
+  // two genuine right-triangle halves: L-F-P and Rt-F-P
+  document.getElementById('halfL').setAttribute('points',`${L.x},${L.y} ${F.x},${F.y} ${P.x},${P.y}`);
+  document.getElementById('halfR').setAttribute('points',`${Rt.x},${Rt.y} ${F.x},${F.y} ${P.x},${P.y}`);
 
   // ratios (equal in svg units — this IS the sine rule)
   const rA=a/Math.sin(angA), rB=b/Math.sin(angB), rC=c/Math.sin(angC);
